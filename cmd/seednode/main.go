@@ -97,7 +97,10 @@ VERSION:
 		Value: "./config/p2pKey.pem",
 	}
 
-	p2pConfigurationFile = "./config/p2p.toml"
+	p2pConfigurationFile = cli.StringFlag{
+		Name:  "p2p-config",
+		Value: "./config/p2p.toml",
+	}
 
 	// p2pPrometheusMetrics defines a flag for p2p prometheus metrics
 	// If enabled, it will open a new route, /debug/metrics/prometheus, where p2p prometheus metrics will be available
@@ -121,6 +124,7 @@ func main() {
 		logSaveFile,
 		configurationFile,
 		p2pKeyPemFile,
+		p2pConfigurationFile,
 		p2pPrometheusMetrics,
 	}
 	app.Version = "v0.0.1"
@@ -191,7 +195,9 @@ func startNode(ctx *cli.Context) error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	p2pCfg, err := common.LoadP2PConfig(p2pConfigurationFile)
+	configurationP2PFileName := ctx.GlobalString(p2pConfigurationFile.Name)
+
+	p2pCfg, err := common.LoadP2PConfig(configurationP2PFileName)
 	if err != nil {
 		return err
 	}
