@@ -1574,46 +1574,93 @@ func TestSelectionTracker_removeBlocksAboveNonce(t *testing.T) {
 func TestSelectionTracker_MaxUniqueAccounts(t *testing.T) {
 	t.Parallel()
 
-	txCache := newCacheToTest(maxNumBytesPerSenderUpperBoundTest, 3)
-	st, err := NewSelectionTracker(txCache, 0, 100)
-	require.Nil(t, err)
+	t.Run("should fail when sender uniqueness limit is exceeded", func(t *testing.T) {
+		txCache := newCacheToTest(maxNumBytesPerSenderUpperBoundTest, 3)
+		st, err := NewSelectionTracker(txCache, 0, 100)
+		require.Nil(t, err)
 
-	count := maxAccountsPerBlock + 1
-	txs := make([][]byte, count)
+		count := maxAccountsPerBlock + 1
+		txs := make([][]byte, count)
 
-	for i := 0; i < count; i++ {
-		sender := fmt.Sprintf("sender%d", i)
-		hash := []byte(fmt.Sprintf("tx%d", i))
+		for i := 0; i < count; i++ {
+			sender := fmt.Sprintf("sender%d", i)
+			hash := []byte(fmt.Sprintf("tx%d", i))
 
-		wTx := &WrappedTransaction{
-			Tx: &transaction.Transaction{
-				SndAddr: []byte(sender),
-				RcvAddr: []byte("receiver"),
-				Nonce:   uint64(i),
-			},
-			TxHash: hash,
+			wTx := &WrappedTransaction{
+				Tx: &transaction.Transaction{
+					SndAddr: []byte(sender),
+					RcvAddr: []byte("receiver"),
+					Nonce:   uint64(i),
+				},
+				TxHash: hash,
+			}
+			txCache.txByHash.addTx(wTx)
+			txs[i] = hash
 		}
-		txCache.txByHash.addTx(wTx)
-		txs[i] = hash
-	}
 
-	body := &block.Body{
-		MiniBlocks: []*block.MiniBlock{
-			{TxHashes: txs, Type: block.TxBlock},
-		},
-	}
-	header := &block.Header{
-		Nonce: 10,
-	}
+		body := &block.Body{
+			MiniBlocks: []*block.MiniBlock{
+				{TxHashes: txs, Type: block.TxBlock},
+			},
+		}
+		header := &block.Header{
+			Nonce: 10,
+		}
 
-	accProvider := &txcachemocks.AccountNonceAndBalanceProviderMock{
-		GetRootHashCalled: func() ([]byte, error) {
-			return defaultLatestExecutedHash, nil
-		},
-	}
+		accProvider := &txcachemocks.AccountNonceAndBalanceProviderMock{
+			GetRootHashCalled: func() ([]byte, error) {
+				return defaultLatestExecutedHash, nil
+			},
+		}
 
-	err = st.OnProposedBlock([]byte("blockHash"), body, header, accProvider, defaultLatestExecutedHash)
-	require.Equal(t, errToManyUniqueAccountsInBlock, err)
+		err = st.OnProposedBlock([]byte("blockHash"), body, header, accProvider, defaultLatestExecutedHash)
+		require.Equal(t, errToManyUniqueAccountsInBlock, err)
+	})
+
+	t.Run("should fail when fee payer uniqueness limit is exceeded", func(t *testing.T) {
+		txCache := newCacheToTest(maxNumBytesPerSenderUpperBoundTest, 3)
+		st, err := NewSelectionTracker(txCache, 0, 100)
+		require.Nil(t, err)
+
+		count := maxAccountsPerBlock + 1
+		txs := make([][]byte, count)
+
+		sender := []byte("shared-sender")
+		for i := 0; i < count; i++ {
+			hash := []byte(fmt.Sprintf("tx-%d", i))
+			relayer := []byte(fmt.Sprintf("relayer%d", i))
+
+			wTx := &WrappedTransaction{
+				Tx: &transaction.Transaction{
+					SndAddr: sender,
+					RcvAddr: []byte("receiver"),
+					Nonce:   uint64(i),
+				},
+				TxHash:   hash,
+				FeePayer: relayer,
+			}
+			txCache.txByHash.addTx(wTx)
+			txs[i] = hash
+		}
+
+		body := &block.Body{
+			MiniBlocks: []*block.MiniBlock{
+				{TxHashes: txs, Type: block.TxBlock},
+			},
+		}
+		header := &block.Header{
+			Nonce: 10,
+		}
+
+		accProvider := &txcachemocks.AccountNonceAndBalanceProviderMock{
+			GetRootHashCalled: func() ([]byte, error) {
+				return defaultLatestExecutedHash, nil
+			},
+		}
+
+		err = st.OnProposedBlock([]byte("blockHash"), body, header, accProvider, defaultLatestExecutedHash)
+		require.Equal(t, errToManyUniqueAccountsInBlock, err)
+	})
 }
 
 type twoBlockTrackerSetup struct {

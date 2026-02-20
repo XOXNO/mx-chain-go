@@ -502,6 +502,9 @@ func (st *selectionTracker) checkUniqueAccountsLimit(blockBody *block.Body) erro
 	uniqueAccounts := make(map[string]struct{})
 	for _, tx := range txsInBlock {
 		uniqueAccounts[string(tx.Tx.GetSndAddr())] = struct{}{}
+		if len(tx.FeePayer) > 0 {
+			uniqueAccounts[string(tx.FeePayer)] = struct{}{}
+		}
 		if len(uniqueAccounts) > maxAccountsPerBlock {
 			log.Warn("selectionTracker.OnProposedBlock: too many unique accounts in block",
 				"count", len(uniqueAccounts),
