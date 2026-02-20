@@ -626,8 +626,8 @@ func TestBenchmarkTxCache_selectTransactionsFromBunches(t *testing.T) {
 		selected, accumulatedGas := selectTransactionsFromBunches(virtualSession, bunches, options)
 		sw.Stop(t.Name())
 
-		require.Equal(t, 200000, len(selected))
-		require.Equal(t, uint64(10_000_000_000), accumulatedGas)
+		require.Equal(t, maxAccountsPerBlock*3, len(selected))
+		require.Equal(t, uint64(maxAccountsPerBlock*3)*50000, accumulatedGas)
 	})
 
 	t.Run("numSenders = 300000, numTransactions = 1", func(t *testing.T) {
@@ -641,8 +641,8 @@ func TestBenchmarkTxCache_selectTransactionsFromBunches(t *testing.T) {
 		selected, accumulatedGas := selectTransactionsFromBunches(virtualSession, bunches, options)
 		sw.Stop(t.Name())
 
-		require.Equal(t, 200000, len(selected))
-		require.Equal(t, uint64(10_000_000_000), accumulatedGas)
+		require.Equal(t, maxAccountsPerBlock, len(selected))
+		require.Equal(t, uint64(maxAccountsPerBlock)*50000, accumulatedGas)
 	})
 
 	for name, measurement := range sw.GetMeasurementsMap() {
@@ -725,8 +725,8 @@ func TestBenchmarkTxCache_doSelectTransactions(t *testing.T) {
 		sw.Stop(t.Name())
 
 		require.NoError(t, err)
-		require.Equal(t, 30_000, len(selected))
-		require.Equal(t, uint64(1_500_000_000), accumulatedGas)
+		require.Equal(t, 20_000, len(selected))
+		require.Equal(t, uint64(20_000)*50_000, accumulatedGas)
 	})
 
 	t.Run("numSenders = 100000, numTransactions = 1, maxNum = 30_000", func(t *testing.T) {
@@ -742,8 +742,8 @@ func TestBenchmarkTxCache_doSelectTransactions(t *testing.T) {
 		sw.Stop(t.Name())
 
 		require.NoError(t, err)
-		require.Equal(t, 30_000, len(selected))
-		require.Equal(t, uint64(1_500_000_000), accumulatedGas)
+		require.Equal(t, maxAccountsPerBlock, len(selected))
+		require.Equal(t, uint64(maxAccountsPerBlock)*50000, accumulatedGas)
 	})
 
 	t.Run("numSenders = 300000, numTransactions = 1, maxNum = 30_000", func(t *testing.T) {
@@ -759,8 +759,8 @@ func TestBenchmarkTxCache_doSelectTransactions(t *testing.T) {
 		sw.Stop(t.Name())
 
 		require.NoError(t, err)
-		require.Equal(t, 30_000, len(selected))
-		require.Equal(t, uint64(1_500_000_000), accumulatedGas)
+		require.Equal(t, maxAccountsPerBlock, len(selected))
+		require.Equal(t, uint64(maxAccountsPerBlock)*50000, accumulatedGas)
 	})
 
 	for name, measurement := range sw.GetMeasurementsMap() {
