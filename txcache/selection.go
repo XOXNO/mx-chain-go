@@ -64,6 +64,7 @@ func selectTransactionsFromBunches(
 
 	accumulatedGas := uint64(0)
 	selectionLoopStartTime := time.Now()
+	uniqueAccounts := make(map[string]struct{})
 
 	var currentTransaction *WrappedTransaction
 	// Select transactions (sorted).
@@ -101,8 +102,27 @@ func selectTransactionsFromBunches(
 
 		shouldSkipTransaction := detectSkippableTransaction(virtualSession, item, senderRecord)
 		if !shouldSkipTransaction {
-			// first, we get the transaction that might be selected
 			currentTransaction = item.getCurrentTransaction()
+			skipCurrentTransaction, skipSenderFromSelection := shouldSkipTransactionByUniqueAccountsLimit(
+				currentTransaction,
+				uniqueAccounts,
+			)
+			if skipCurrentTransaction {
+				log.Trace("TxCache.selectTransactionsFromBunches skipped tx due to unique account limit",
+					"txHash", currentTransaction.TxHash,
+					"sender", currentTransaction.Tx.GetSndAddr(),
+					"feepayer", currentTransaction.FeePayer,
+					"uniqueAccounts", len(uniqueAccounts),
+				)
+
+				// If sender is new, drop it entirely from this proposal.
+				// Otherwise, keep trying the next tx from this sender; a later tx may avoid introducing new fee-payers.
+				if !skipSenderFromSelection && item.gotoNextTransaction() {
+					heap.Push(transactionsHeap, item)
+				}
+				continue
+			}
+
 			err = virtualSession.accumulateConsumedBalance(currentTransaction, senderRecord)
 			if err != nil {
 				// This error is unlikely to occur, as it would have been raised earlier during the detectSkippableSender call.
@@ -111,6 +131,8 @@ func selectTransactionsFromBunches(
 					"err", err,
 					"txHash", currentTransaction.TxHash)
 			} else {
+				addUniqueAccounts(uniqueAccounts, currentTransaction)
+
 				// only if there isn't any error, we select the transaction
 				accumulatedGas += gasLimit
 				item.selectCurrentTransaction()
@@ -124,9 +146,47 @@ func selectTransactionsFromBunches(
 		if item.gotoNextTransaction() {
 			heap.Push(transactionsHeap, item)
 		}
+
 	}
 
 	return selectedTransactions, accumulatedGas
+}
+
+func shouldSkipTransactionByUniqueAccountsLimit(
+	tx *WrappedTransaction,
+	uniqueAccounts map[string]struct{},
+) (bool, bool) {
+	senderAddress := string(tx.Tx.GetSndAddr())
+	_, senderAlreadyPresent := uniqueAccounts[senderAddress]
+
+	accountsAfterTxSelection := len(uniqueAccounts)
+	if !senderAlreadyPresent {
+		accountsAfterTxSelection++
+	}
+
+	if len(tx.FeePayer) > 0 {
+		feePayerAddress := string(tx.FeePayer)
+		if _, ok := uniqueAccounts[feePayerAddress]; !ok {
+			if feePayerAddress != senderAddress {
+				accountsAfterTxSelection++
+			}
+		}
+	}
+
+	if accountsAfterTxSelection <= maxAccountsPerBlock {
+		return false, false
+	}
+
+	// If sender is new, every remaining tx in this bunch also belongs to the same sender
+	// and would still exceed the unique-account limit.
+	return true, !senderAlreadyPresent
+}
+
+func addUniqueAccounts(uniqueAccounts map[string]struct{}, tx *WrappedTransaction) {
+	uniqueAccounts[string(tx.Tx.GetSndAddr())] = struct{}{}
+	if len(tx.FeePayer) > 0 {
+		uniqueAccounts[string(tx.FeePayer)] = struct{}{}
+	}
 }
 
 // Note (future micro-optimization): we can merge "detectSkippableSender()" and "detectSkippableTransaction()" into a single function,

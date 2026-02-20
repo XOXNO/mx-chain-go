@@ -434,6 +434,52 @@ func TestTxCache_selectTransactionsFromBunches(t *testing.T) {
 		require.Equal(t, 0, len(selected))
 		require.Equal(t, uint64(0), accumulatedGas)
 	})
+
+	t.Run("should stop at unique account limit", func(t *testing.T) {
+		options := createMockTxSelectionOptions(10_000_000_000, math.MaxInt)
+		session := txcachemocks.NewSelectionSessionMock()
+		virtualSession := newVirtualSelectionSession(session, make(map[string]*virtualAccountRecord))
+
+		host := txcachemocks.NewMempoolHostMock()
+		overflow := maxAccountsPerBlock + 10
+		bunches := make([]bunchOfTransactions, 0, overflow)
+
+		for i := 0; i < overflow; i++ {
+			tx := createTx([]byte(fmt.Sprintf("hash%d", i)), fmt.Sprintf("sender%d", i), 0).withValue(big.NewInt(0))
+			tx.precomputeFields(host)
+			bunches = append(bunches, bunchOfTransactions{tx})
+		}
+
+		selected, accumulatedGas := selectTransactionsFromBunches(virtualSession, bunches, options)
+
+		require.Len(t, selected, maxAccountsPerBlock)
+		require.Equal(t, uint64(500000000), accumulatedGas)
+
+		uniqueAccounts := make(map[string]struct{}, maxAccountsPerBlock)
+		for _, tx := range selected {
+			uniqueAccounts[string(tx.Tx.GetSndAddr())] = struct{}{}
+		}
+
+		require.Len(t, uniqueAccounts, maxAccountsPerBlock)
+	})
+
+	t.Run("should treat sender and fee payer as one account", func(t *testing.T) {
+		uniqueAccounts := make(map[string]struct{}, maxAccountsPerBlock)
+		for i := 0; i < maxAccountsPerBlock-1; i++ {
+			uniqueAccounts[fmt.Sprintf("acc%d", i)] = struct{}{}
+		}
+
+		tx := createTx([]byte("hash"), "sender", 0).withValue(big.NewInt(0))
+		tx.FeePayer = tx.Tx.GetSndAddr()
+		tx.precomputeFields(txcachemocks.NewMempoolHostMock())
+
+		skip, skipSender := shouldSkipTransactionByUniqueAccountsLimit(tx, uniqueAccounts)
+		require.False(t, skip)
+		require.False(t, skipSender)
+		addUniqueAccounts(uniqueAccounts, tx)
+
+		require.Len(t, uniqueAccounts, maxAccountsPerBlock)
+	})
 }
 
 func TestBenchmarkTxCache_acquireBunchesOfTransactions(t *testing.T) {
