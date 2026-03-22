@@ -1,0 +1,50 @@
+# XDP-enabled P2P config for testnet
+# This overrides the default p2p.toml with XDP and QUIC enabled
+
+[Node]
+    Port = "37373-38383"
+    ThresholdMinConnectedPeers = 2
+    MinNumPeersToWaitForOnBootstrap = 2
+
+    [Node.Transports]
+        # Enable QUIC for Phase 2 AF_XDP acceleration
+        QUICAddress = "/ip4/0.0.0.0/udp/%d/quic-v1"
+        WebSocketAddress = ""
+        WebTransportAddress = ""
+        [Node.Transports.TCP]
+            ListenAddress = "/ip4/0.0.0.0/tcp/%d"
+            PreventPortReuse = false
+
+    [Node.ResourceLimiter]
+        Type = "default autoscale"
+
+[KadDhtPeerDiscovery]
+    Enabled = true
+    Type = "optimized"
+    RefreshIntervalInSec = 10
+    ProtocolIDs = ["/erd/kad/1.0.0", "xdp-testnet"]
+    InitialPeerList = ["/ip4/172.28.0.10/tcp/9999/p2p/16Uiu2HAkw5SNNtSvH1zJiQ6Gc3WoGNSxiyNueRKe6fuAuh57G3Bk"]
+    BucketSize = 100
+    RoutingTableRefreshIntervalInSec = 300
+
+[Sharding]
+    TargetPeerCount = 10
+    MaxIntraShardValidators = 3
+    MaxCrossShardValidators = 3
+    MaxIntraShardObservers = 2
+    MaxCrossShardObservers = 2
+    MaxSeeders = 2
+    Type = "ListsSharder"
+
+[XDP]
+    Enabled = true
+    AccelerateQUIC = true
+    Port = 37374
+    Interface = ""
+    QueueSize = 2048
+    BatchSize = 64
+
+    [XDP.Security]
+        KeyRotationIntervalSec = 86400
+        ReplayWindowSize = 100000
+        TimestampToleranceSec = 60

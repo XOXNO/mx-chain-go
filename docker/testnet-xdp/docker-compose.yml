@@ -1,0 +1,159 @@
+# MultiversX XDP Testnet — Docker Compose
+#
+# Architecture:
+#   - 1 seednode (bootstrap)
+#   - 3 validators (one per shard: 0, 1, meta) with XDP enabled
+#   - 1 observer (no XDP, proves fallback works)
+#
+# Usage:
+#   docker compose build
+#   docker compose up -d
+#   docker compose logs -f validator-0
+#
+# For Coolify deployment:
+#   Set the build context to the mx-chain-go root directory
+#   The Dockerfile.node handles both node and seednode builds
+#
+# XDP Notes:
+#   - Containers need NET_RAW + NET_ADMIN + BPF capabilities for AF_XDP
+#   - host network mode gives best XDP performance (direct NIC access)
+#   - Bridge mode works but uses UDP fallback (no real AF_XDP)
+
+x-node-common: &node-common
+  build:
+    context: ../..
+    dockerfile: docker/testnet-xdp/Dockerfile.node
+  restart: unless-stopped
+  cap_add:
+    - NET_RAW
+    - NET_ADMIN
+    - SYS_ADMIN      # includes CAP_BPF on older kernels
+    - IPC_LOCK        # for UMEM mlock
+  ulimits:
+    memlock:
+      soft: -1
+      hard: -1
+
+services:
+  # ============================================================
+  # SEEDNODE — bootstrap peer discovery
+  # ============================================================
+  seednode:
+    <<: *node-common
+    hostname: seednode
+    command: >
+      seednode
+      --rest-api-interface=0.0.0.0:10000
+    ports:
+      - "10000:10000"
+      - "9999:9999"
+    networks:
+      testnet:
+        ipv4_address: 172.28.0.10
+
+  # ============================================================
+  # VALIDATOR 0 — Shard 0, XDP enabled
+  # ============================================================
+  validator-0:
+    <<: *node-common
+    hostname: validator-0
+    depends_on:
+      seednode:
+        condition: service_started
+    command: >
+      node
+      --rest-api-interface=0.0.0.0:8080
+      --config=/config/node/config.toml
+      --p2p-config=/config/node/p2p.toml
+      --destination-shard-as-observer=0
+    environment:
+      - XDP_ENABLED=true
+      - XDP_ACCELERATE_QUIC=true
+    ports:
+      - "8080:8080"
+      - "37373:37373"
+      - "37374:37374/udp"
+    networks:
+      testnet:
+        ipv4_address: 172.28.0.11
+
+  # ============================================================
+  # VALIDATOR 1 — Shard 1, XDP enabled
+  # ============================================================
+  validator-1:
+    <<: *node-common
+    hostname: validator-1
+    depends_on:
+      seednode:
+        condition: service_started
+    command: >
+      node
+      --rest-api-interface=0.0.0.0:8080
+      --config=/config/node/config.toml
+      --p2p-config=/config/node/p2p.toml
+      --destination-shard-as-observer=1
+    environment:
+      - XDP_ENABLED=true
+      - XDP_ACCELERATE_QUIC=true
+    ports:
+      - "8081:8080"
+      - "37375:37373"
+      - "37376:37374/udp"
+    networks:
+      testnet:
+        ipv4_address: 172.28.0.12
+
+  # ============================================================
+  # VALIDATOR META — Metachain, XDP enabled
+  # ============================================================
+  validator-meta:
+    <<: *node-common
+    hostname: validator-meta
+    depends_on:
+      seednode:
+        condition: service_started
+    command: >
+      node
+      --rest-api-interface=0.0.0.0:8080
+      --config=/config/node/config.toml
+      --p2p-config=/config/node/p2p.toml
+      --destination-shard-as-observer=metachain
+    environment:
+      - XDP_ENABLED=true
+      - XDP_ACCELERATE_QUIC=true
+    ports:
+      - "8082:8080"
+      - "37377:37373"
+      - "37378:37374/udp"
+    networks:
+      testnet:
+        ipv4_address: 172.28.0.13
+
+  # ============================================================
+  # OBSERVER — No XDP, proves fallback works
+  # ============================================================
+  observer:
+    <<: *node-common
+    hostname: observer
+    depends_on:
+      seednode:
+        condition: service_started
+    command: >
+      node
+      --rest-api-interface=0.0.0.0:8080
+      --config=/config/node/config.toml
+      --p2p-config=/config/node/p2p.toml
+    environment:
+      - XDP_ENABLED=false
+    ports:
+      - "8083:8080"
+    networks:
+      testnet:
+        ipv4_address: 172.28.0.14
+
+networks:
+  testnet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
