@@ -14,6 +14,16 @@
         [Node.Transports.TCP]
             ListenAddress = "/ip4/0.0.0.0/tcp/%d"
             PreventPortReuse = false
+        [Node.Transports.XDP]
+            Enabled = true
+            AccelerateQUIC = true
+            Interface = ""
+            QueueSize = 2048
+            BatchSize = 64
+            [Node.Transports.XDP.Security]
+                KeyRotationIntervalSec = 86400
+                ReplayWindowSize = 100000
+                TimestampToleranceSec = 60
 
     [Node.ResourceLimiter]
         Type = "default autoscale"
@@ -35,16 +45,3 @@
     MaxCrossShardObservers = 2
     MaxSeeders = 2
     Type = "ListsSharder"
-
-[XDP]
-    Enabled = true
-    AccelerateQUIC = true
-    Port = 37374
-    Interface = ""
-    QueueSize = 2048
-    BatchSize = 64
-
-    [XDP.Security]
-        KeyRotationIntervalSec = 86400
-        ReplayWindowSize = 100000
-        TimestampToleranceSec = 60

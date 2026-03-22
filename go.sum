@@ -327,8 +327,8 @@ github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5
 github.com/microcosm-cc/bluemonday v1.0.1/go.mod h1:hsXNsILzKxV+sX77C5b8FSuKF00vh2OMYv+xgHpAMF4=
 github.com/miekg/dns v1.1.66 h1:FeZXOS3VCVsKnEAd+wBkjMC3D2K+ww66Cq3VnCINuJE=
 github.com/miekg/dns v1.1.66/go.mod h1:jGFzBsSNbJw6z1HYut1RKBKHA9PBdxeHrZG8J+gC2WE=
-github.com/mihaieremia/mx-chain-communication-go v1.3.2-0.20260322204312-6b0072b3545d h1:Hs8fcnmSuaSC+T93DHpUgxSCnA1yx6i3eRnSD4Ios7c=
-github.com/mihaieremia/mx-chain-communication-go v1.3.2-0.20260322204312-6b0072b3545d/go.mod h1:dlaRWdiplpZkbdVBp7E9aIk7ak/kStwEBQ9vZSXaBVM=
+github.com/mihaieremia/mx-chain-communication-go v1.3.2-0.20260322212043-07cc97d0f1c5 h1:56ng7dquo/mYIiWPaU71OQavoR1yFwDMxSXftL7TBFU=
+github.com/mihaieremia/mx-chain-communication-go v1.3.2-0.20260322212043-07cc97d0f1c5/go.mod h1:dlaRWdiplpZkbdVBp7E9aIk7ak/kStwEBQ9vZSXaBVM=
 github.com/mikioh/tcp v0.0.0-20190314235350-803a9b46060c h1:bzE/A84HN25pxAuk9Eej1Kz9OUelF97nAc82bDquQI8=
 github.com/mikioh/tcp v0.0.0-20190314235350-803a9b46060c/go.mod h1:0SQS9kMwD2VsyFEB++InYyBJroV/FRmBgcydeSUcJms=
 github.com/mikioh/tcpinfo v0.0.0-20190314235526-30a79bb1804b h1:z78hV3sbSMAUoyUMM0I83AUIT6Hu17AWfgjzIbtrYFc=

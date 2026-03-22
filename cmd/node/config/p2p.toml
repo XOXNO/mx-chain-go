@@ -24,6 +24,19 @@
             ListenAddress = "/ip4/0.0.0.0/tcp/%d" # TCP listen address
             PreventPortReuse = false
 
+        # XDP (eXpress Data Path) high-performance networking
+        # Falls back gracefully to standard networking on unsupported platforms
+        [Node.Transports.XDP]
+            Enabled = false
+            AccelerateQUIC = false
+            Interface = ""
+            QueueSize = 2048
+            BatchSize = 64
+            [Node.Transports.XDP.Security]
+                KeyRotationIntervalSec = 86400
+                ReplayWindowSize = 100000
+                TimestampToleranceSec = 60
+
     [Node.ResourceLimiter]
         Type = "default autoscale" #available options "default autoscale", "infinite", "default with manual scale".
         ManualSystemMemoryInMB = 0 # not taken into account if the type is not "default with manual scale"
@@ -90,38 +103,3 @@
     #               the shard membership of the connected peers
     #   `NilListSharder` will disable conection trimming (sharder is off)
     Type = "ListsSharder"
-
-# XDP (eXpress Data Path) high-performance networking
-# Phase 1: Custom fast-path protocol between XDP-capable peers (kernel bypass)
-# Phase 2: AF_XDP acceleration for standard QUIC traffic (transparent to all peers)
-# Requires Linux with kernel 4.18+ and CAP_BPF+CAP_NET_ADMIN for AF_XDP
-# Falls back gracefully to standard networking on unsupported platforms
-[XDP]
-    # Enable Phase 1: custom XDP protocol between XDP-capable peers
-    Enabled = false
-
-    # Enable Phase 2: accelerate QUIC transport with AF_XDP kernel bypass
-    # Requires QUICAddress to be set in [Node.Transports]
-    AccelerateQUIC = false
-
-    # UDP port for XDP direct messaging (Phase 1, separate from libp2p ports)
-    Port = 37374
-
-    # Network interface for AF_XDP (empty = auto-detect)
-    Interface = ""
-
-    # AF_XDP ring buffer size (power of 2)
-    QueueSize = 2048
-
-    # Batch size for send operations
-    BatchSize = 64
-
-    [XDP.Security]
-        # Key rotation interval in seconds (default: 24 hours)
-        KeyRotationIntervalSec = 86400
-
-        # Replay protection window size
-        ReplayWindowSize = 100000
-
-        # Maximum timestamp tolerance in seconds
-        TimestampToleranceSec = 60
