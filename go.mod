@@ -202,4 +202,4 @@ require (
 
 replace github.com/gogo/protobuf => github.com/multiversx/protobuf v1.3.2
 
-replace github.com/multiversx/mx-chain-communication-go => github.com/mihaieremia/mx-chain-communication-go v1.3.2-0.20260322214641-a2029532bf65
+replace github.com/multiversx/mx-chain-communication-go => github.com/mihaieremia/mx-chain-communication-go v1.3.2-0.20260323021122-9f6d5eab15d1
