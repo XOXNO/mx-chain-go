@@ -333,8 +333,8 @@ github.com/libp2p/go-msgio v0.3.0 h1:mf3Z8B1xcFN314sWX+2vOTShIE0Mmn2TXn3YCUQGNj0
 github.com/libp2p/go-msgio v0.3.0/go.mod h1:nyRM819GmVaF9LX3l03RMh10QdOroF++NBbxAb0mmDM=
 github.com/libp2p/go-nat v0.2.0 h1:Tyz+bUFAYqGyJ/ppPPymMGbIgNRH+WqC5QrT5fKrrGk=
 github.com/libp2p/go-nat v0.2.0/go.mod h1:3MJr+GRpRkyT65EpVPBstXLvOlAPzUVlG6Pwg9ohLJk=
-github.com/libp2p/go-netroute v0.3.0 h1:nqPCXHmeNmgTJnktosJ/sIef9hvwYCrsLxXmfNks/oc=
-github.com/libp2p/go-netroute v0.3.0/go.mod h1:Nkd5ShYgSMS5MUKy/MU2T57xFoOKvvLR92Lic48LEyA=
+github.com/libp2p/go-netroute v0.2.2 h1:Dejd8cQ47Qx2kRABg6lPwknU7+nBnFRpko45/fFPuZ8=
+github.com/libp2p/go-netroute v0.2.2/go.mod h1:Rntq6jUAH0l9Gg17w5bFGhcC9a+vk4KNXs6s7IljKYE=
 github.com/libp2p/go-reuseport v0.4.0 h1:nR5KU7hD0WxXCJbmw7r2rhRYruNRl2koHw8fQscQm2s=
 github.com/libp2p/go-reuseport v0.4.0/go.mod h1:ZtI03j/wO5hZVDFo2jKywN6bYKWLOy8Se6DrI2E1cLU=
 github.com/libp2p/go-yamux/v4 v4.0.2 h1:nrLh89LN/LEiqcFiqdKDRHjGstN300C1269K/EX0CPU=
@@ -352,8 +352,8 @@ github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5
 github.com/microcosm-cc/bluemonday v1.0.1/go.mod h1:hsXNsILzKxV+sX77C5b8FSuKF00vh2OMYv+xgHpAMF4=
 github.com/miekg/dns v1.1.66 h1:FeZXOS3VCVsKnEAd+wBkjMC3D2K+ww66Cq3VnCINuJE=
 github.com/miekg/dns v1.1.66/go.mod h1:jGFzBsSNbJw6z1HYut1RKBKHA9PBdxeHrZG8J+gC2WE=
-github.com/mihaieremia/mx-chain-communication-go v1.3.2-0.20260323012445-28a1ef4a3884 h1:IfCiue6cICSW1Xhlxck3LVtaT7ha8/3YEqP5UFvfUVU=
-github.com/mihaieremia/mx-chain-communication-go v1.3.2-0.20260323012445-28a1ef4a3884/go.mod h1:WE+HIXTI8PjCEC9LfWm1awKAOjN3LARqM5Hr/95TYuE=
+github.com/mihaieremia/mx-chain-communication-go v1.3.2-0.20260323014341-a574e70664ad h1:7ZctcUvZZ4WLjG2HPUG7/vujHGQm1IpcEYo/E2Z8S2I=
+github.com/mihaieremia/mx-chain-communication-go v1.3.2-0.20260323014341-a574e70664ad/go.mod h1:0gW3B9B3bXKT8CSnNzRrMoviWxlGtMHTkeC4zaw3MxM=
 github.com/mikioh/tcp v0.0.0-20190314235350-803a9b46060c h1:bzE/A84HN25pxAuk9Eej1Kz9OUelF97nAc82bDquQI8=
 github.com/mikioh/tcp v0.0.0-20190314235350-803a9b46060c/go.mod h1:0SQS9kMwD2VsyFEB++InYyBJroV/FRmBgcydeSUcJms=
 github.com/mikioh/tcpinfo v0.0.0-20190314235526-30a79bb1804b h1:z78hV3sbSMAUoyUMM0I83AUIT6Hu17AWfgjzIbtrYFc=

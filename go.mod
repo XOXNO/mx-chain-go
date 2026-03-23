@@ -1,6 +1,6 @@
 module github.com/multiversx/mx-chain-go
 
-go 1.24.6
+go 1.23.8
 
 require (
 	github.com/beevik/ntp v1.3.0
@@ -110,7 +110,7 @@ require (
 	github.com/libp2p/go-libp2p-routing-helpers v0.7.4 // indirect
 	github.com/libp2p/go-msgio v0.3.0 // indirect
 	github.com/libp2p/go-nat v0.2.0 // indirect
-	github.com/libp2p/go-netroute v0.3.0 // indirect
+	github.com/libp2p/go-netroute v0.2.2 // indirect
 	github.com/libp2p/go-reuseport v0.4.0 // indirect
 	github.com/libp2p/go-yamux/v4 v4.0.2 // indirect
 	github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd // indirect
@@ -210,4 +210,4 @@ require (
 
 replace github.com/gogo/protobuf => github.com/multiversx/protobuf v1.3.2
 
-replace github.com/multiversx/mx-chain-communication-go => github.com/mihaieremia/mx-chain-communication-go v1.3.2-0.20260323012445-28a1ef4a3884
+replace github.com/multiversx/mx-chain-communication-go => github.com/mihaieremia/mx-chain-communication-go v1.3.2-0.20260323014341-a574e70664ad
