@@ -272,6 +272,7 @@ func (ccf *consensusComponentsFactory) Create() (*consensusComponents, error) {
 		EquivalentProofsPool:          ccf.dataComponents.Datapool().Proofs(),
 		EpochNotifier:                 ccf.coreComponents.EpochNotifier(),
 		InvalidSignersCache:           invalidSignersCache,
+		MessagesHandler:               consensusService,
 	}
 
 	consensusDataContainer, err := spos.NewConsensusCore(
@@ -657,6 +658,7 @@ func (ccf *consensusComponentsFactory) createMetaChainBootstrapper() (process.Bo
 		EpochBootstrapper:           ccf.processComponents.EpochStartTrigger(),
 		ValidatorAccountsDB:         ccf.stateComponents.PeerAccounts(),
 		ValidatorStatisticsDBSyncer: validatorAccountsDBSyncer,
+		Watchdog:                    ccf.coreComponents.Watchdog(),
 	}
 
 	return sync.NewMetaBootstrap(argsMetaBootstrapper)
