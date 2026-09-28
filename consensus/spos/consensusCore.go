@@ -4,6 +4,7 @@ import (
 	"github.com/multiversx/mx-chain-core-go/data"
 	"github.com/multiversx/mx-chain-core-go/hashing"
 	"github.com/multiversx/mx-chain-core-go/marshal"
+	crypto "github.com/multiversx/mx-chain-crypto-go"
 
 	"github.com/multiversx/mx-chain-go/common"
 	cryptoCommon "github.com/multiversx/mx-chain-go/common/crypto"
@@ -20,6 +21,7 @@ import (
 type ConsensusCore struct {
 	blockChain                    data.ChainHandler
 	blockProcessor                process.BlockProcessor
+	executionManager              process.ExecutionManager
 	bootstrapper                  process.Bootstrapper
 	broadcastMessenger            consensus.BroadcastMessenger
 	chronologyHandler             consensus.ChronologyHandler
@@ -39,18 +41,24 @@ type ConsensusCore struct {
 	scheduledProcessor            consensus.ScheduledProcessor
 	messageSigningHandler         consensus.P2PSigningHandler
 	peerBlacklistHandler          consensus.PeerBlacklistHandler
+	peerSignatureHandler          crypto.PeerSignatureHandler
 	signingHandler                consensus.SigningHandler
 	enableEpochsHandler           common.EnableEpochsHandler
+	enableRoundsHandler           common.EnableRoundsHandler
 	equivalentProofsPool          consensus.EquivalentProofsPool
 	epochNotifier                 process.EpochNotifier
 	invalidSignersCache           InvalidSignersCache
 	messagesHandler               ConsensusService
+	aotSelector                   process.AOTTransactionSelector
+	commonConfigsHandler          common.CommonConfigsHandler
+	headersPool                   consensus.HeadersPoolGetter
 }
 
 // ConsensusCoreArgs store all arguments that are needed to create a ConsensusCore object
 type ConsensusCoreArgs struct {
 	BlockChain                    data.ChainHandler
 	BlockProcessor                process.BlockProcessor
+	ExecutionManager              process.ExecutionManager
 	Bootstrapper                  process.Bootstrapper
 	BroadcastMessenger            consensus.BroadcastMessenger
 	ChronologyHandler             consensus.ChronologyHandler
@@ -70,12 +78,17 @@ type ConsensusCoreArgs struct {
 	ScheduledProcessor            consensus.ScheduledProcessor
 	MessageSigningHandler         consensus.P2PSigningHandler
 	PeerBlacklistHandler          consensus.PeerBlacklistHandler
+	PeerSignatureHandler          crypto.PeerSignatureHandler
 	SigningHandler                consensus.SigningHandler
 	EnableEpochsHandler           common.EnableEpochsHandler
+	EnableRoundsHandler           common.EnableRoundsHandler
 	EquivalentProofsPool          consensus.EquivalentProofsPool
 	EpochNotifier                 process.EpochNotifier
 	InvalidSignersCache           InvalidSignersCache
 	MessagesHandler               ConsensusService
+	AOTSelector                   process.AOTTransactionSelector
+	CommonConfigsHandler          common.CommonConfigsHandler
+	HeadersPool                   consensus.HeadersPoolGetter
 }
 
 // NewConsensusCore creates a new ConsensusCore instance
@@ -85,6 +98,7 @@ func NewConsensusCore(
 	consensusCore := &ConsensusCore{
 		blockChain:                    args.BlockChain,
 		blockProcessor:                args.BlockProcessor,
+		executionManager:              args.ExecutionManager,
 		bootstrapper:                  args.Bootstrapper,
 		broadcastMessenger:            args.BroadcastMessenger,
 		chronologyHandler:             args.ChronologyHandler,
@@ -104,12 +118,17 @@ func NewConsensusCore(
 		scheduledProcessor:            args.ScheduledProcessor,
 		messageSigningHandler:         args.MessageSigningHandler,
 		peerBlacklistHandler:          args.PeerBlacklistHandler,
+		peerSignatureHandler:          args.PeerSignatureHandler,
 		signingHandler:                args.SigningHandler,
 		enableEpochsHandler:           args.EnableEpochsHandler,
+		enableRoundsHandler:           args.EnableRoundsHandler,
 		equivalentProofsPool:          args.EquivalentProofsPool,
 		epochNotifier:                 args.EpochNotifier,
 		invalidSignersCache:           args.InvalidSignersCache,
 		messagesHandler:               args.MessagesHandler,
+		aotSelector:                   args.AOTSelector,
+		commonConfigsHandler:          args.CommonConfigsHandler,
+		headersPool:                   args.HeadersPool,
 	}
 
 	err := ValidateConsensusCore(consensusCore)
@@ -133,6 +152,11 @@ func (cc *ConsensusCore) GetAntiFloodHandler() consensus.P2PAntifloodHandler {
 // BlockProcessor gets the BlockProcessor stored in the ConsensusCore
 func (cc *ConsensusCore) BlockProcessor() process.BlockProcessor {
 	return cc.blockProcessor
+}
+
+// ExecutionManager gets the ExecutionManager stored in the ConsensusCore
+func (cc *ConsensusCore) ExecutionManager() process.ExecutionManager {
+	return cc.executionManager
 }
 
 // BootStrapper gets the Bootstrapper stored in the ConsensusCore
@@ -230,6 +254,11 @@ func (cc *ConsensusCore) PeerBlacklistHandler() consensus.PeerBlacklistHandler {
 	return cc.peerBlacklistHandler
 }
 
+// PeerSignatureHandler will return the peer signature handler
+func (cc *ConsensusCore) PeerSignatureHandler() crypto.PeerSignatureHandler {
+	return cc.peerSignatureHandler
+}
+
 // SigningHandler will return the signing handler component
 func (cc *ConsensusCore) SigningHandler() consensus.SigningHandler {
 	return cc.signingHandler
@@ -240,9 +269,19 @@ func (cc *ConsensusCore) EnableEpochsHandler() common.EnableEpochsHandler {
 	return cc.enableEpochsHandler
 }
 
+// EnableRoundsHandler returns the enable rounds handler component
+func (cc *ConsensusCore) EnableRoundsHandler() common.EnableRoundsHandler {
+	return cc.enableRoundsHandler
+}
+
 // EquivalentProofsPool returns the equivalent proofs component
 func (cc *ConsensusCore) EquivalentProofsPool() consensus.EquivalentProofsPool {
 	return cc.equivalentProofsPool
+}
+
+// HeadersPool returns the headers pool
+func (cc *ConsensusCore) HeadersPool() consensus.HeadersPoolGetter {
+	return cc.headersPool
 }
 
 // InvalidSignersCache returns the invalid signers cache component
@@ -263,6 +302,11 @@ func (cc *ConsensusCore) SetBlockchain(blockChain data.ChainHandler) {
 // SetBlockProcessor sets block processor
 func (cc *ConsensusCore) SetBlockProcessor(blockProcessor process.BlockProcessor) {
 	cc.blockProcessor = blockProcessor
+}
+
+// SetExecutionManager sets execution manager
+func (cc *ConsensusCore) SetExecutionManager(executionManager process.ExecutionManager) {
+	cc.executionManager = executionManager
 }
 
 // SetBootStrapper sets process bootstrapper
@@ -340,6 +384,11 @@ func (cc *ConsensusCore) SetPeerBlacklistHandler(peerBlacklistHandler consensus.
 	cc.peerBlacklistHandler = peerBlacklistHandler
 }
 
+// SetPeerSignatureHandler sets peer signature handler
+func (cc *ConsensusCore) SetPeerSignatureHandler(peerSignatureHandler crypto.PeerSignatureHandler) {
+	cc.peerSignatureHandler = peerSignatureHandler
+}
+
 // SetHeaderSigVerifier sets header sig verifier
 func (cc *ConsensusCore) SetHeaderSigVerifier(headerSigVerifier consensus.HeaderSigVerifier) {
 	cc.headerSigVerifier = headerSigVerifier
@@ -365,14 +414,24 @@ func (cc *ConsensusCore) SetSigningHandler(signingHandler consensus.SigningHandl
 	cc.signingHandler = signingHandler
 }
 
-// SetEnableEpochsHandler sets enable eopchs handler
+// SetEnableEpochsHandler sets enable epochs handler
 func (cc *ConsensusCore) SetEnableEpochsHandler(enableEpochsHandler common.EnableEpochsHandler) {
 	cc.enableEpochsHandler = enableEpochsHandler
+}
+
+// SetEnableRoundsHandler sets enable rounds handler
+func (cc *ConsensusCore) SetEnableRoundsHandler(enableRoundsHandler common.EnableRoundsHandler) {
+	cc.enableRoundsHandler = enableRoundsHandler
 }
 
 // SetEquivalentProofsPool sets equivalent proofs pool
 func (cc *ConsensusCore) SetEquivalentProofsPool(proofPool consensus.EquivalentProofsPool) {
 	cc.equivalentProofsPool = proofPool
+}
+
+// SetHeadersPool sets the headers pool
+func (cc *ConsensusCore) SetHeadersPool(headersPool consensus.HeadersPoolGetter) {
+	cc.headersPool = headersPool
 }
 
 // SetEpochNotifier sets epoch notifier
@@ -388,6 +447,26 @@ func (cc *ConsensusCore) SetInvalidSignersCache(cache InvalidSignersCache) {
 // SetMessagesHandler sets consensus messages handler
 func (cc *ConsensusCore) SetMessagesHandler(messagesHandler ConsensusService) {
 	cc.messagesHandler = messagesHandler
+}
+
+// AOTSelector returns the AOT transaction selector
+func (cc *ConsensusCore) AOTSelector() process.AOTTransactionSelector {
+	return cc.aotSelector
+}
+
+// CommonConfigsHandler returns the CommonConfigsHandler
+func (cc *ConsensusCore) CommonConfigsHandler() common.CommonConfigsHandler {
+	return cc.commonConfigsHandler
+}
+
+// SetCommonConfigsHandler sets the CommonConfigsHandler
+func (cc *ConsensusCore) SetCommonConfigsHandler(commonConfigsHandler common.CommonConfigsHandler) {
+	cc.commonConfigsHandler = commonConfigsHandler
+}
+
+// SetAOTSelector sets the AOT transaction selector
+func (cc *ConsensusCore) SetAOTSelector(selector process.AOTTransactionSelector) {
+	cc.aotSelector = selector
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

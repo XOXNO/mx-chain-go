@@ -5,6 +5,7 @@ import (
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/core/throttler"
 	"github.com/multiversx/mx-chain-core-go/marshal"
+
 	"github.com/multiversx/mx-chain-go/common"
 	"github.com/multiversx/mx-chain-go/process"
 	"github.com/multiversx/mx-chain-go/process/factory"
@@ -86,6 +87,10 @@ func NewMetaInterceptorsContainerFactory(
 	if args.HeartbeatExpiryTimespanInSec < minTimespanDurationInSec {
 		return nil, process.ErrInvalidExpiryTimespan
 	}
+	roundExclusions, err := common.NewConfiguredRoundExclusionHandler(&args.Config)
+	if err != nil {
+		return nil, err
+	}
 
 	argInterceptorFactory := &interceptorFactory.ArgInterceptedDataFactory{
 		CoreComponents:                          args.CoreComponents,
@@ -106,6 +111,7 @@ func NewMetaInterceptorsContainerFactory(
 		PeerShardMapper:                         args.MainPeerShardMapper,
 		PeerAuthCacher:                          args.DataPool.PeerAuthentications(),
 		PeerAuthenticationTimeBetweenSendsInSec: args.PeerAuthenticationTimeBetweenSendsInSec,
+		RoundExclusions:                         roundExclusions,
 	}
 
 	base := &baseInterceptorsContainerFactory{
@@ -135,6 +141,8 @@ func NewMetaInterceptorsContainerFactory(
 		nodeOperationMode:               args.NodeOperationMode,
 		interceptedDataVerifierFactory:  args.InterceptedDataVerifierFactory,
 		enableEpochsHandler:             args.CoreComponents.EnableEpochsHandler(),
+		roundExclusions:                 roundExclusions,
+		config:                          args.Config,
 	}
 
 	icf := &metaInterceptorsContainerFactory{
@@ -273,6 +281,7 @@ func (micf *metaInterceptorsContainerFactory) createOneShardHeaderInterceptor(to
 		BlockBlackList:      micf.blockBlackList,
 		Proofs:              micf.dataPool.Proofs(),
 		EnableEpochsHandler: micf.enableEpochsHandler,
+		RoundExclusions:     micf.roundExclusions,
 	}
 	hdrProcessor, err := processor.NewHdrInterceptorProcessor(argProcessor)
 	if err != nil {
@@ -295,6 +304,7 @@ func (micf *metaInterceptorsContainerFactory) createOneShardHeaderInterceptor(to
 			CurrentPeerId:           micf.mainMessenger.ID(),
 			PreferredPeersHolder:    micf.preferredPeersHolder,
 			InterceptedDataVerifier: interceptedDataVerifier,
+			ManagedPeersHolder:      micf.argInterceptorFactory.CryptoComponents.ManagedPeersHolder(),
 		},
 	)
 	if err != nil {
@@ -341,7 +351,7 @@ func (micf *metaInterceptorsContainerFactory) generateRewardTxInterceptors() err
 
 	for idx := uint32(0); idx < noOfShards; idx++ {
 		identifierScr := factory.RewardsTransactionTopic + shardC.CommunicationIdentifier(idx)
-		interceptor, err := micf.createOneRewardTxInterceptor(identifierScr)
+		interceptor, err := micf.createOneRewardTxInterceptor(identifierScr, true)
 		if err != nil {
 			return err
 		}

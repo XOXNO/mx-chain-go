@@ -87,6 +87,10 @@ func NewShardInterceptorsContainerFactory(
 	if args.HeartbeatExpiryTimespanInSec < minTimespanDurationInSec {
 		return nil, process.ErrInvalidExpiryTimespan
 	}
+	roundExclusions, err := common.NewConfiguredRoundExclusionHandler(&args.Config)
+	if err != nil {
+		return nil, err
+	}
 
 	argInterceptorFactory := &interceptorFactory.ArgInterceptedDataFactory{
 		CoreComponents:                          args.CoreComponents,
@@ -107,6 +111,7 @@ func NewShardInterceptorsContainerFactory(
 		PeerShardMapper:                         args.MainPeerShardMapper,
 		PeerAuthCacher:                          args.DataPool.PeerAuthentications(),
 		PeerAuthenticationTimeBetweenSendsInSec: args.PeerAuthenticationTimeBetweenSendsInSec,
+		RoundExclusions:                         roundExclusions,
 	}
 
 	base := &baseInterceptorsContainerFactory{
@@ -136,6 +141,8 @@ func NewShardInterceptorsContainerFactory(
 		nodeOperationMode:               args.NodeOperationMode,
 		interceptedDataVerifierFactory:  args.InterceptedDataVerifierFactory,
 		enableEpochsHandler:             args.CoreComponents.EnableEpochsHandler(),
+		roundExclusions:                 roundExclusions,
+		config:                          args.Config,
 	}
 
 	icf := &shardInterceptorsContainerFactory{
@@ -247,7 +254,7 @@ func (sicf *shardInterceptorsContainerFactory) generateRewardTxInterceptor() err
 	interceptorSlice := make([]process.Interceptor, 0)
 
 	identifierTx := factory.RewardsTransactionTopic + shardC.CommunicationIdentifier(core.MetachainShardId)
-	interceptor, err := sicf.createOneRewardTxInterceptor(identifierTx)
+	interceptor, err := sicf.createOneRewardTxInterceptor(identifierTx, true)
 	if err != nil {
 		return err
 	}

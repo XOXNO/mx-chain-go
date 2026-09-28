@@ -3,6 +3,7 @@ package metachain
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"math/big"
 	"sort"
 	"strings"
@@ -334,17 +335,18 @@ func (brc *baseRewardsCreator) isSystemDelegationSC(address []byte) bool {
 }
 
 func (brc *baseRewardsCreator) createProtocolSustainabilityRewardTransaction(
-	metaBlock data.HeaderHandler,
+	epoch uint32,
+	round uint64,
 	protocolSustainability *big.Int,
 ) (*rewardTx.RewardTx, uint32, error) {
 
-	protocolSustainabilityAddressForEpoch := brc.rewardsHandler.ProtocolSustainabilityAddressInEpoch(metaBlock.GetEpoch())
+	protocolSustainabilityAddressForEpoch := brc.rewardsHandler.ProtocolSustainabilityAddressInEpoch(epoch)
 	protocolSustainabilityShardID := brc.shardCoordinator.ComputeId([]byte(protocolSustainabilityAddressForEpoch))
 	protocolSustainabilityRwdTx := &rewardTx.RewardTx{
-		Round:   metaBlock.GetRound(),
+		Round:   round,
 		Value:   big.NewInt(0).Set(protocolSustainability),
 		RcvAddr: []byte(protocolSustainabilityAddressForEpoch),
-		Epoch:   metaBlock.GetEpoch(),
+		Epoch:   epoch,
 	}
 
 	brc.accumulatedRewards.Add(brc.accumulatedRewards, protocolSustainabilityRwdTx.Value)
@@ -353,13 +355,14 @@ func (brc *baseRewardsCreator) createProtocolSustainabilityRewardTransaction(
 
 func (brc *baseRewardsCreator) createRewardFromRwdInfo(
 	rwdInfo *rewardInfoData,
-	metaBlock data.HeaderHandler,
+	epoch uint32,
+	round uint64,
 ) (*rewardTx.RewardTx, []byte, error) {
 	rwdTx := &rewardTx.RewardTx{
-		Round:   metaBlock.GetRound(),
+		Round:   round,
 		Value:   big.NewInt(0).Add(rwdInfo.accumulatedFees, rwdInfo.rewardsFromProtocol),
 		RcvAddr: []byte(rwdInfo.address),
-		Epoch:   metaBlock.GetEpoch(),
+		Epoch:   epoch,
 	}
 
 	rwdTxHash, err := core.CalculateHash(brc.marshalizer, brc.hasher, rwdTx)
@@ -397,7 +400,7 @@ func (brc *baseRewardsCreator) addAcceleratorRewardToMiniBlocks(
 	miniBlocks block.MiniBlockSlice,
 	shardID uint32,
 ) error {
-	protocolSustainabilityRwdHash, errHash := core.CalculateHash(brc.marshalizer, brc.hasher, acceleratorRewardTx)
+	acceleratorRwdHash, errHash := core.CalculateHash(brc.marshalizer, brc.hasher, acceleratorRewardTx)
 	if errHash != nil {
 		return errHash
 	}
@@ -409,8 +412,8 @@ func (brc *baseRewardsCreator) addAcceleratorRewardToMiniBlocks(
 		return nil
 	}
 
-	brc.currTxs.AddTx(protocolSustainabilityRwdHash, acceleratorRewardTx)
-	miniBlocks[shardID].TxHashes = append(miniBlocks[shardID].TxHashes, protocolSustainabilityRwdHash)
+	brc.currTxs.AddTx(acceleratorRwdHash, acceleratorRewardTx)
+	miniBlocks[shardID].TxHashes = append(miniBlocks[shardID].TxHashes, acceleratorRwdHash)
 
 	return nil
 }
@@ -462,17 +465,45 @@ func (brc *baseRewardsCreator) getConsensusGroupSizeForShardAndEpoch(shardID uin
 }
 
 func (brc *baseRewardsCreator) verifyCreatedRewardMiniBlocksWithMetaBlock(metaBlock data.HeaderHandler, createdMiniBlocks block.MiniBlockSlice) error {
-	numReceivedRewardsMBs := 0
+	createdMiniBlocksByReceiverShard := make(map[uint32]*block.MiniBlock, len(createdMiniBlocks))
+	for _, createdMiniBlock := range createdMiniBlocks {
+		if createdMiniBlock == nil {
+			return epochStart.ErrNilMiniblock
+		}
+
+		_, alreadyCreated := createdMiniBlocksByReceiverShard[createdMiniBlock.ReceiverShardID]
+		if alreadyCreated {
+			return fmt.Errorf("%w, receiver shard %d",
+				epochStart.ErrDuplicatedCreatedRewardMiniBlock, createdMiniBlock.ReceiverShardID)
+		}
+
+		createdMiniBlocksByReceiverShard[createdMiniBlock.ReceiverShardID] = createdMiniBlock
+	}
+
+	matchedReceiverShards := make(map[uint32]struct{}, len(createdMiniBlocks))
 	for _, miniBlockHdr := range metaBlock.GetMiniBlockHeaderHandlers() {
 		if miniBlockHdr.GetTypeInt32() != int32(block.RewardsBlock) {
 			continue
 		}
 
-		numReceivedRewardsMBs++
-		createdMiniBlock := getMiniBlockWithReceiverShardID(miniBlockHdr.GetReceiverShardID(), createdMiniBlocks)
-		if createdMiniBlock == nil {
+		if miniBlockHdr.GetSenderShardID() != core.MetachainShardId {
+			return fmt.Errorf("%w, unexpected sender shard %d for a rewards miniblock header",
+				epochStart.ErrRewardMiniBlockHashDoesNotMatch, miniBlockHdr.GetSenderShardID())
+		}
+
+		receiverShardID := miniBlockHdr.GetReceiverShardID()
+		_, alreadyMatched := matchedReceiverShards[receiverShardID]
+		if alreadyMatched {
+			return fmt.Errorf("%w, receiver shard %d",
+				epochStart.ErrDuplicatedRewardMiniBlockHeader, receiverShardID)
+		}
+
+		createdMiniBlock, ok := createdMiniBlocksByReceiverShard[receiverShardID]
+		if !ok {
 			return epochStart.ErrRewardMiniBlockHashDoesNotMatch
 		}
+
+		matchedReceiverShards[receiverShardID] = struct{}{}
 
 		createdMBHash, errComputeHash := core.CalculateHash(brc.marshalizer, brc.hasher, createdMiniBlock)
 		if errComputeHash != nil {
@@ -496,19 +527,10 @@ func (brc *baseRewardsCreator) verifyCreatedRewardMiniBlocksWithMetaBlock(metaBl
 		}
 	}
 
-	if len(createdMiniBlocks) != numReceivedRewardsMBs {
+	if len(createdMiniBlocks) != len(matchedReceiverShards) {
 		return epochStart.ErrRewardMiniBlocksNumDoesNotMatch
 	}
 
-	return nil
-}
-
-func getMiniBlockWithReceiverShardID(shardId uint32, miniBlocks block.MiniBlockSlice) *block.MiniBlock {
-	for _, miniBlock := range miniBlocks {
-		if miniBlock.ReceiverShardID == shardId {
-			return miniBlock
-		}
-	}
 	return nil
 }
 
